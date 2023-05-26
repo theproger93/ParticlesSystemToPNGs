@@ -1,4 +1,4 @@
-Particle System to PNG Generator is a Unity plugin that allows you to capture and save Particle System effects as PNG image sequences. With this tool, you can easily convert your Particle Systems into sprites or create animated textures for your games, visual effects, or other interactive experiences.
+Particles System to PNG Generator is a Unity plugin that allows you to capture and save Particle System effects as PNG image sequences. With this tool, you can easily convert your Particle Systems into sprites or create animated textures for your games, visual effects, or other interactive experiences.
 
 Features
 Capture and save Particle System effects as PNG image sequences.
