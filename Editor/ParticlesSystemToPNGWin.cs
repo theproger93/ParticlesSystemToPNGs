@@ -3,26 +3,23 @@ using UnityEditor;
 using System.IO;
 
 public class ParticlesSystemToPNGWin : EditorWindow
-{    
+{
+
 #if UNITY_EDITOR
-    private ParticleSystem _particlesSystem;
-    private Camera _particlesCamera;
+    private ParticleSystem _particlesSystem;    
     private int _width = 512;
     private int _height = 512;
     private string _fileName = "ParticlesFrame";
     private string _folderName = "ParticlesRenderd";
     private int _numFrames = 30;
-    private float _frameDuration = 0.1f;
-    private bool _playOnAwake = false;
-    private bool _cameraAutoFit = true;
-    private bool _alert = true;
-    private const string _helpBox = "1. Create a camera in your scene. You don't need to worry about its settings for now." +
-        "\n2. Drag and drop your newly created camera into the Camera field of the plugin.\n3. Drag and drop your particle system into the Particle System field." +
-        "\n4. Specify a file name for the PNGs you want to capture." +
-        "\n5. Specify a folder name to save the files. You can also include subfolders by using the forward slash (/) character. If the folder doesn't exist, the plugin will create it automatically and save all the files in it." +
-        "\n6. Determine the number of frames you want to capture." +
-        "\n7. Set the duration between frames capturing." +
-        "\n8. Enable (Camera Auto Size) to optimize PNG capture by adjusting the camera size to fit the particle system, reducing overdraw.";
+    private float _frameDuration = 0.1f;   
+    private bool _cameraAutoFit = true;   
+    private const string _helpBox = "1. Drag and drop your particle system into the Particle System field." +
+        "\n2. Specify a file name for the PNGs you want to capture." +
+        "\n3. Specify a folder name to save the files. You can also include subfolders by using the forward slash (/) character. If the folder doesn't exist, the plugin will create it automatically and save all the files in it." +
+        "\n4. Determine the number of frames you want to capture." +
+        "\n5. Set the duration between frames capturing." +
+        "\n6. Enable (Camera Auto Size) to optimize PNG capture by adjusting the camera size to fit the particle system, reducing overdraw.";
     
 
     private float startTime;
@@ -32,39 +29,46 @@ public class ParticlesSystemToPNGWin : EditorWindow
     public static void ShowWindow()
     {
         EditorWindow.GetWindow(typeof(ParticlesSystemToPNGWin));
-    }
-
-    private void Awake()
-    {
-        if (_playOnAwake)
-        {
-            _particlesSystem.Play();
-        }        
-    }
+    }    
 
     private void OnGUI()
     {
-        GUILayout.Label("Capture Settings", EditorStyles.boldLabel);
+        GUIStyle headLine = new GUIStyle(GUI.skin.label);
+        headLine.fontSize = 20;
+        headLine.fontStyle = FontStyle.Bold;
 
-        _particlesSystem = EditorGUILayout.ObjectField("Particles System", _particlesSystem, typeof(ParticleSystem), true) as ParticleSystem;
-        _particlesCamera = EditorGUILayout.ObjectField("Particles Camera", _particlesCamera, typeof(Camera), true) as Camera;
-        _width = EditorGUILayout.IntField("Width", _width);
-        _height = EditorGUILayout.IntField("Height", _height);
-        _fileName = EditorGUILayout.TextField("File Name", _fileName);
-        _folderName = EditorGUILayout.TextField("Folder Name", _folderName);
-        _numFrames = EditorGUILayout.IntField("Num Frames", _numFrames);
-        _frameDuration = EditorGUILayout.FloatField("Frame Duration", _frameDuration);
-        _playOnAwake = EditorGUILayout.Toggle("Play On Awake(Play Mode)", _playOnAwake);
-        _cameraAutoFit = EditorGUILayout.Toggle("Camera auto size", _cameraAutoFit);
-        _alert = EditorGUILayout.Toggle("Show Alert", _alert);
-
+        GUILayout.Label("Capture Settings", headLine);
+        GUILayout.Space(20);
+        GUIContent particleSystem = new GUIContent("   Particles System", EditorGUIUtility.IconContent("Particle Effect").image);
+        _particlesSystem = EditorGUILayout.ObjectField(particleSystem, _particlesSystem, typeof(ParticleSystem), true) as ParticleSystem;
+        GUILayout.Space(5);
+        GUIContent width = new GUIContent("   Width", EditorGUIUtility.IconContent("d_RectTool On").image);
+        _width = EditorGUILayout.IntField(width, _width);
+        GUIContent height = new GUIContent("   Height", EditorGUIUtility.IconContent("d_RectTool On").image);
+        _height = EditorGUILayout.IntField(height, _height);
+        GUILayout.Space(5);
+        GUIContent fileName = new GUIContent("   Files Name", EditorGUIUtility.IconContent("d_RawImage Icon").image);
+        _fileName = EditorGUILayout.TextField(fileName, _fileName);
+        GUIContent folderName = new GUIContent("   Folder Name", EditorGUIUtility.IconContent("d_FolderOpened Icon").image);
+        _folderName = EditorGUILayout.TextField(folderName, _folderName);
+        GUILayout.Space(5);
+        GUIContent numFrames = new GUIContent("   Num. of Frames", EditorGUIUtility.IconContent("PreTextureArrayFirstSlice").image);
+        _numFrames = EditorGUILayout.IntField(numFrames, _numFrames);
+        GUIContent frameTime = new GUIContent("   Frame Duration", EditorGUIUtility.IconContent("d_UnityEditor.AnimationWindow").image);
+        _frameDuration = EditorGUILayout.FloatField(frameTime, _frameDuration);
+        GUILayout.Space(5);       
+        GUIContent cameraAutoSize = new GUIContent("   Camera auto size", EditorGUIUtility.IconContent("d_ScaleTool On").image);
+        _cameraAutoFit = EditorGUILayout.Toggle(cameraAutoSize, _cameraAutoFit);
+       
+        GUILayout.Space(10);
         GUIStyle greenButtonStyle = new GUIStyle(GUI.skin.button);
         greenButtonStyle.normal.textColor = Color.cyan;
         greenButtonStyle.hover.textColor = Color.green;
         greenButtonStyle.fontSize = 20;
         greenButtonStyle.fontStyle = FontStyle.Bold;
 
-        if (GUILayout.Button(">>> CAPTURE <<<", greenButtonStyle, GUILayout.Height(50)))
+        GUIContent captureButtonContent = new GUIContent("   CAPTURE", EditorGUIUtility.IconContent("Animation.Record@2x").image);
+        if (GUILayout.Button(captureButtonContent, greenButtonStyle, GUILayout.Height(50)))
         {
             Capture();
         }
@@ -72,8 +76,7 @@ public class ParticlesSystemToPNGWin : EditorWindow
         showTabContent = EditorGUILayout.Foldout(showTabContent, "How to use ?");
         if (showTabContent)
         {            
-            EditorGUILayout.HelpBox(_helpBox, MessageType.Info);
-            EditorGUILayout.HelpBox("Camera\nBy following these steps, the plugin will configure the camera to use an orthographic view and adjust its position and scale to fit the particle system. This ensures accurate and consistent captures of your particles effects.", MessageType.Warning);
+            EditorGUILayout.HelpBox(_helpBox, MessageType.Info);            
         }
 
         GUIStyle linkButton = new GUIStyle(GUI.skin.button);        
@@ -86,7 +89,8 @@ public class ParticlesSystemToPNGWin : EditorWindow
     }
 
     private void Capture()
-    {        
+    {
+        Camera newCamera = new GameObject("CaptureCamera", typeof(Camera)).GetComponent<Camera>();
         string folderPath = Application.dataPath + "/" + _folderName;
         if (!System.IO.Directory.Exists(folderPath))
         {
@@ -97,7 +101,7 @@ public class ParticlesSystemToPNGWin : EditorWindow
         float timePerFrame = _particlesSystem.main.duration / (float)_numFrames;
         RenderTexture renderTexture = new RenderTexture(_width, _height, 24);
         _particlesSystem.gameObject.SetActive(true);
-        Camera camera = _particlesCamera;
+        Camera camera = newCamera;
         camera.orthographic = true;
         if (_cameraAutoFit)
         {
@@ -134,11 +138,8 @@ public class ParticlesSystemToPNGWin : EditorWindow
             RenderTexture.active = null;
         }
         EditorUtility.ClearProgressBar();
-        if (_alert)
-        {
-            EditorUtility.DisplayDialog("Hold on tight, things are about to get crazy!", "To generate folders and files in Unity, try minimizing and maximizing the Unity editor. This action triggers the generation process.", "Roger that, Captain!", "Sure, why not?");
-        }
-
+        AssetDatabase.Refresh();
+        DestroyImmediate(newCamera.gameObject);
     }
 #endif
 }
