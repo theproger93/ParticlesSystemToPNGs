@@ -1,6 +1,6 @@
 {
   "name": "com.nikdorn.particlessystemtopngs",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "displayName": "Particles System To PNGs",
   "description": "Capture your particle system in action with ease using our new Unity editor extension! Our tool allows you to capture both the main particle system and all of its child particles in high-quality PNG format.",
   "documentationUrl": "https://nikdorn.com/particlesystemtopngs",
