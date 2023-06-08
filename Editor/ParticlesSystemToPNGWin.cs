@@ -2,7 +2,9 @@
 using UnityEditor;
 using System.IO;
 
-public class ParticlesSystemToPNGWin : EditorWindow
+namespace Scripts
+{
+    public class ParticlesSystemToPNGWin : EditorWindow
 {
 
 #if UNITY_EDITOR
@@ -13,7 +15,8 @@ public class ParticlesSystemToPNGWin : EditorWindow
     private string _folderName = "ParticlesRenderd";
     private int _numFrames = 30;
     private float _frameDuration = 0.1f;   
-    private bool _cameraAutoFit = true;   
+    private bool _cleanBackground = true;
+    private bool _cameraAutoFit = true; 
     private const string _helpBox = "1. Drag and drop your particle system into the Particle System field." +
         "\n2. Specify a file name for the PNGs you want to capture." +
         "\n3. Specify a folder name to save the files. You can also include subfolders by using the forward slash (/) character. If the folder doesn't exist, the plugin will create it automatically and save all the files in it." +
@@ -57,6 +60,8 @@ public class ParticlesSystemToPNGWin : EditorWindow
         GUIContent frameTime = new GUIContent("   Frame Duration", EditorGUIUtility.IconContent("d_UnityEditor.AnimationWindow").image);
         _frameDuration = EditorGUILayout.FloatField(frameTime, _frameDuration);
         GUILayout.Space(5);       
+        GUIContent cleanBackground = new GUIContent("   Clean Background", EditorGUIUtility.IconContent("d_RectMask2D Icon").image);
+        _cleanBackground = EditorGUILayout.Toggle(cleanBackground, _cleanBackground);
         GUIContent cameraAutoSize = new GUIContent("   Camera auto size", EditorGUIUtility.IconContent("d_ScaleTool On").image);
         _cameraAutoFit = EditorGUILayout.Toggle(cameraAutoSize, _cameraAutoFit);
        
@@ -88,59 +93,109 @@ public class ParticlesSystemToPNGWin : EditorWindow
         }
     }
 
-    private void Capture()
-    {
-        Camera newCamera = new GameObject("CaptureCamera", typeof(Camera)).GetComponent<Camera>();
-        string folderPath = Application.dataPath + "/" + _folderName;
-        if (!System.IO.Directory.Exists(folderPath))
+        private void Capture()
         {
-            System.IO.Directory.CreateDirectory(folderPath);
-        }
+            Camera newCamera = new GameObject("CaptureCamera", typeof(Camera)).GetComponent<Camera>();
 
-        startTime = Time.time;
-        float timePerFrame = _particlesSystem.main.duration / (float)_numFrames;
-        RenderTexture renderTexture = new RenderTexture(_width, _height, 24);
-        _particlesSystem.gameObject.SetActive(true);
-        Camera camera = newCamera;
-        camera.orthographic = true;
-        if (_cameraAutoFit)
-        {
-            ParticleSystemRenderer[] renderers = _particlesSystem.GetComponentsInChildren<ParticleSystemRenderer>();
-            Bounds bounds = renderers[0].bounds;
-            for (int i = 1; i < renderers.Length; i++)
+            SerializedObject tagManager = new SerializedObject(AssetDatabase.LoadAllAssetsAtPath("ProjectSettings/TagManager.asset")[0]);
+            SerializedProperty layers = tagManager.FindProperty("layers");
+            string layerName = "PNGs";
+            bool layerExists = false;
+
+            for (int i = 8; i < layers.arraySize; i++)
             {
-                bounds.Encapsulate(renderers[i].bounds);
+                SerializedProperty layer = layers.GetArrayElementAtIndex(i);
+                if (layer.stringValue == layerName)
+                {
+                    layerExists = true;
+                    break;
+                }
             }
 
-            float cameraSize = Mathf.Max(bounds.size.x, bounds.size.y) / 2f;
-            camera.orthographicSize = cameraSize;
-            camera.transform.position = new Vector3(bounds.center.x, bounds.center.y, camera.transform.position.z);
-        }
-        camera.targetTexture = renderTexture;
+            if (!layerExists && _cleanBackground)
+            {
+                SerializedProperty newLayer = layers.GetArrayElementAtIndex(8);
+                newLayer.stringValue = layerName;
+                tagManager.ApplyModifiedProperties();
+            }
 
-        for (int i = 0; i < _numFrames; i++)
-        {
-            float progress = (float)i / _numFrames;
-            EditorUtility.DisplayProgressBar("Capturing Frames", "Frame " + i + " of " + _numFrames, progress);
+            string folderPath = Application.dataPath + "/" + _folderName;
+            if (!System.IO.Directory.Exists(folderPath))
+            {
+                System.IO.Directory.CreateDirectory(folderPath);
+            }
 
-            float time = startTime + i * timePerFrame;
-            _particlesSystem.Simulate(_frameDuration, true, false);
-            _particlesSystem.Play();
-            camera.Render();
-            RenderTexture.active = renderTexture;
-            Texture2D texture = new Texture2D(_width, _height, TextureFormat.ARGB32, false);
-            texture.ReadPixels(new Rect(0, 0, _width, _height), 0, 0);
-            texture.Apply();
-            byte[] bytes = texture.EncodeToPNG();           
-            string filePath = Path.Combine(Application.dataPath, _folderName.Replace('/', '\\'), _fileName + "_" + i + ".png");
-            System.IO.File.WriteAllBytes(filePath, bytes);
-            Debug.Log("Saved particle system frame " + i + " to " + filePath);
-            RenderTexture.active = null;
+            startTime = Time.time;
+            float timePerFrame = _particlesSystem.main.duration / (float)_numFrames;
+            RenderTexture renderTexture = new RenderTexture(_width, _height, 24);
+            _particlesSystem.gameObject.SetActive(true);
+            Camera camera = newCamera;
+            camera.orthographic = true;
+
+            if (_cleanBackground)
+            {
+                int particleLayer = LayerMask.NameToLayer("PNGs");
+                _particlesSystem.gameObject.layer = particleLayer;
+                ParticleSystemRenderer[] renderers = _particlesSystem.GetComponentsInChildren<ParticleSystemRenderer>();
+                foreach (var renderer in renderers)
+                {
+                    renderer.gameObject.layer = particleLayer;
+                }
+                camera.cullingMask = 1 << particleLayer; // Set the camera mask to the particle layer
+            }
+
+            if (_cameraAutoFit)
+            {
+                ParticleSystemRenderer[] renderers = _particlesSystem.GetComponentsInChildren<ParticleSystemRenderer>();
+                Bounds bounds = renderers[0].bounds;
+                for (int i = 1; i < renderers.Length; i++)
+                {
+                    bounds.Encapsulate(renderers[i].bounds);
+                }
+
+                float cameraSize = Mathf.Max(bounds.size.x, bounds.size.y) / 2f;
+                camera.orthographicSize = cameraSize;
+                camera.transform.position = new Vector3(bounds.center.x, bounds.center.y, camera.transform.position.z);
+            }
+
+            camera.targetTexture = renderTexture;
+
+            for (int i = 0; i < _numFrames; i++)
+            {
+                float progress = (float)i / _numFrames;
+                EditorUtility.DisplayProgressBar("Capturing Frames", "Frame " + i + " of " + _numFrames, progress);
+
+                float time = startTime + i * timePerFrame;
+                _particlesSystem.Simulate(_frameDuration, true, false);
+                _particlesSystem.Play();
+                camera.Render();
+                RenderTexture.active = renderTexture;
+                Texture2D texture = new Texture2D(_width, _height, TextureFormat.ARGB32, false);
+                texture.ReadPixels(new Rect(0, 0, _width, _height), 0, 0);
+                texture.Apply();
+                byte[] bytes = texture.EncodeToPNG();
+                string filePath = Path.Combine(Application.dataPath, _folderName.Replace('/', '\\'), _fileName + "_" + i + ".png");
+                System.IO.File.WriteAllBytes(filePath, bytes);
+                Debug.Log("Saved particle system frame " + i + " to " + filePath);
+                RenderTexture.active = null;
+            }
+
+            EditorUtility.ClearProgressBar();
+            AssetDatabase.Refresh();
+            DestroyImmediate(newCamera.gameObject);
+
+            if (!layerExists && _cleanBackground)
+            {
+                SerializedProperty newLayer = layers.GetArrayElementAtIndex(8);
+                newLayer.stringValue = string.Empty;
+                tagManager.ApplyModifiedProperties();
+            }
         }
-        EditorUtility.ClearProgressBar();
-        AssetDatabase.Refresh();
-        DestroyImmediate(newCamera.gameObject);
-    }
+
+
 #endif
+    }
+
 }
+
 
